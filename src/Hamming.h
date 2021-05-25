@@ -34,7 +34,7 @@ public:
         uint8_t buf[bytes];									// ещё буфер
         memset(buf, 0, bytes);								// чисти чисти
         memset(buffer, 0, bytes);							// чисти чисти
-        uint8_t *ptr = (const uint8_t*) &data;				// для чтения даты
+        uint8_t *ptr = (uint8_t*) &data;				    // для чтения даты
         int ptrCount = 0;
 
         for (int chunk = 0; chunk < chunkAmount; chunk++) {   // каждый чанк
@@ -165,7 +165,7 @@ private:
     void toggle(uint8_t* buf, int num) {
         read(buf, num) ? clear(buf, num) : set(buf, num);
     }
-    uint8_t stat;
+    int stat;
     int bytes = 0;
     int chunkAmount = 0;
     const uint8_t chunkSizeB = (1 << HAM_SIZE);        // вес чанка в битах
