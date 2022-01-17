@@ -13,6 +13,7 @@
 
     Версии:
     v1.0 - релиз
+    v1.1 - исправлена критическая ошибка
 */
 
 #ifndef Hamming_h
@@ -24,9 +25,9 @@ public:
     template <typename T>
     bool pack(T &data) {
         // 0. Считаем и создаём буфер
-        int size = sizeof(T);								// байтов даты
+        uint32_t size = sizeof(T);							// байт даты
         uint8_t signif = chunkSizeB - (HAM_SIZE + 1);		// битов даты на чанк
-        chunkAmount = (size * 8 + signif - 1) / signif;		// колво чанков (целоч. деление)
+        chunkAmount = (size * 8ul + signif - 1) / signif;	// колво чанков (целоч. деление)
         bytes = chunkAmount * chunkSize;					// размер буфера, байт
         if (buffer) free(buffer);							// освобождаем старый
         buffer = (uint8_t*)malloc(bytes);					// выделяем
@@ -66,7 +67,8 @@ public:
         }
 
         // 4. Перемешиваем
-        for (uint8_t i = 0, k = 0; i < chunkSizeB; i++) {
+        uint32_t k = 0;
+        for (uint8_t i = 0; i < chunkSizeB; i++) {
             for (uint8_t j = 0; j < chunkAmount; j++) {
                 write(buffer, k++, read(buf, i + j * chunkSizeB));
             }
@@ -76,11 +78,11 @@ public:
     
     // распаковать данные
     // возврат: 0 ОК, 1 исправлены ошибки, 2 и 3 - есть неисправленные ошибки
-    int unpack(uint8_t* data, int size) {
+    uint32_t unpack(uint8_t* data, uint32_t size) {
         // 0. Считаем и создаём буфер
         uint8_t signif = chunkSizeB - (HAM_SIZE + 1);	// битов даты на чанк
         if (size & chunkSize != 0) return 0;			// не кратно размеру чанка
-        chunkAmount = size / chunkSize;					// колво чанков
+        chunkAmount = (uint32_t)size / chunkSize;		// колво чанков
         bytes = chunkAmount * signif / 8;				// размер буфера, байт (округл. вниз)
         if (buffer) free(buffer);						// чисти старый
         buffer = (uint8_t*)malloc(bytes);				// выделяем
@@ -91,7 +93,8 @@ public:
         stat = 0;
 
         // 1. Разбираем мешанину обратно
-        for (uint8_t i = 0, k = 0; i < chunkSizeB; i++) {
+        uint32_t k = 0;
+        for (uint8_t i = 0; i < chunkSizeB; i++) {
             for (uint8_t j = 0; j < chunkAmount; j++) {
                 write(buf, i + j * chunkSizeB, read(data, k++));
             }
@@ -132,7 +135,7 @@ public:
     }
     
     // размер буфера (больше чем размер входных данных)
-    int length() {
+    uint32_t length() {
         return bytes;
     }
     
@@ -150,24 +153,24 @@ public:
     uint8_t *buffer = NULL;
 
 private:
-    void set(uint8_t* buf, int num) {
+    void set(uint8_t* buf, uint32_t num) {
         bitSet(buf[num >> 3], num & 0b111);
     }
-    void clear(uint8_t* buf, int num) {
+    void clear(uint8_t* buf, uint32_t num) {
         bitClear(buf[num >> 3], num & 0b111);
     }
-    void write(uint8_t* buf, int num, bool state) {
+    void write(uint8_t* buf, uint32_t num, bool state) {
         state ? set(buf, num) : clear(buf, num);
     }
-    bool read(uint8_t* buf, int num) {
+    bool read(uint8_t* buf, uint32_t num) {
         return bitRead(buf[num >> 3], num & 0b111);
     }
-    void toggle(uint8_t* buf, int num) {
+    void toggle(uint8_t* buf, uint32_t num) {
         read(buf, num) ? clear(buf, num) : set(buf, num);
     }
     int stat;
-    int bytes = 0;
-    int chunkAmount = 0;
+    uint32_t bytes = 0;
+    uint32_t chunkAmount = 0;
     const uint8_t chunkSizeB = (1 << HAM_SIZE);        // вес чанка в битах
     const uint8_t chunkSize = (1 << HAM_SIZE) >> 3;    // вес чанка в байтах
 };
