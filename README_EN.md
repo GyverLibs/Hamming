@@ -1,3 +1,5 @@
+This is an automatic translation, may be incorrect in some places. See sources and examples!
+
 # Hamming
 Library for packing and unpacking data using the Hamming algorithm (redundant data for recovery)
 - The order of the algorithm is 4-7 (the higher, the more reliable, but longer processing)
