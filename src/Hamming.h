@@ -25,7 +25,12 @@ public:
     template <typename T>
     bool pack(T &data) {
         // 0. Считаем и создаём буфер
-        uint32_t size = sizeof(T);							// байт даты
+        uint32_t size = sizeof(T);							// байт даты							// чисти чисти
+        uint8_t *ptr = (uint8_t*) &data;					// для чтения даты
+		return pack(ptr, size);
+    }
+    bool pack(uint8_t *ptr, uint32_t size){
+		// 0. Считаем и создаём буфер						// байт даты
         uint8_t signif = chunkSizeB - (HAM_SIZE + 1);		// битов даты на чанк
         chunkAmount = (size * 8ul + signif - 1) / signif;	// колво чанков (целоч. деление)
         bytes = chunkAmount * chunkSize;					// размер буфера, байт
@@ -34,10 +39,8 @@ public:
         if (!buffer) return 0;								// не удалось создать
         uint8_t buf[bytes];									// ещё буфер
         memset(buf, 0, bytes);								// чисти чисти
-        memset(buffer, 0, bytes);							// чисти чисти
-        uint8_t *ptr = (uint8_t*) &data;				    // для чтения даты
+        memset(buffer, 0, bytes);							// чисти чисти				    // для чтения даты
         int ptrCount = 0;
-
         for (int chunk = 0; chunk < chunkAmount; chunk++) {   // каждый чанк
             // 1. Заполняем дату, минуя ячейки Хэмминга (0,1,2,4,8...)
             for (uint8_t i = 0; i < chunkSizeB; i++) {
@@ -74,8 +77,7 @@ public:
             }
         }
         return 1;
-    }
-    
+	}
     // распаковать данные
     // возврат: 0 ОК, 1 исправлены ошибки, 2 и 3 - есть неисправленные ошибки
     uint32_t unpack(uint8_t* data, uint32_t size) {
