@@ -14,37 +14,37 @@
     Версии:
     v1.0 - релиз
     v1.1 - исправлена критическая ошибка
+    v1.2 - добавлена bool pack(uint8_t *ptr, uint32_t size)
 */
 
-#ifndef Hamming_h
-#define Hamming_h
+#ifndef _Hamming_h
+#define _Hamming_h
 template <uint8_t HAM_SIZE = 5>		// порядок алгоритма (4-8)
 class Hamming {
 public:
     // запаковать данные в буфер
     template <typename T>
     bool pack(T &data) {
-        // 0. Считаем и создаём буфер
-        uint32_t size = sizeof(T);							// байт даты							// чисти чисти
-        uint8_t *ptr = (uint8_t*) &data;					// для чтения даты
-		return pack(ptr, size);
+        return pack((uint8_t*)&data, (uint32_t)sizeof(T));
     }
-    bool pack(uint8_t *ptr, uint32_t size){
-		// 0. Считаем и создаём буфер						// байт даты
-        uint8_t signif = chunkSizeB - (HAM_SIZE + 1);		// битов даты на чанк
-        chunkAmount = (size * 8ul + signif - 1) / signif;	// колво чанков (целоч. деление)
-        bytes = chunkAmount * chunkSize;					// размер буфера, байт
-        if (buffer) free(buffer);							// освобождаем старый
-        buffer = (uint8_t*)malloc(bytes);					// выделяем
-        if (!buffer) return 0;								// не удалось создать
-        uint8_t buf[bytes];									// ещё буфер
-        memset(buf, 0, bytes);								// чисти чисти
-        memset(buffer, 0, bytes);							// чисти чисти				    // для чтения даты
+    
+    bool pack(uint8_t *ptr, uint32_t size) {
+        // 0. Считаем и создаём буфер
+        uint8_t signif = chunkSizeB - (HAM_SIZE + 1);       // битов даты на чанк
+        chunkAmount = (size * 8ul + signif - 1) / signif;   // колво чанков (целоч. деление)
+        bytes = chunkAmount * chunkSize;                    // размер буфера, байт
+        if (buffer) free(buffer);                           // освобождаем старый
+        buffer = (uint8_t*)malloc(bytes);                   // выделяем
+        if (!buffer) return 0;                              // не удалось создать
+        uint8_t buf[bytes];                                 // ещё буфер
+        memset(buf, 0, bytes);                              // чисти чисти
+        memset(buffer, 0, bytes);                           // чисти чисти
         int ptrCount = 0;
-        for (int chunk = 0; chunk < chunkAmount; chunk++) {   // каждый чанк
+        
+        for (int chunk = 0; chunk < chunkAmount; chunk++) { // каждый чанк
             // 1. Заполняем дату, минуя ячейки Хэмминга (0,1,2,4,8...)
             for (uint8_t i = 0; i < chunkSizeB; i++) {
-                if ((i & (i - 1)) != 0) {   // проверка на степень двойки
+                if ((i & (i - 1)) != 0) {                   // проверка на степень двойки
                     write(buf, chunk * chunkSizeB + i, read(ptr, ptrCount++));  // переписываем побитно
                 }
             }
@@ -66,7 +66,7 @@ public:
             for (uint8_t i = 1; i < chunkSizeB; i++) {
                 if (read(buf, chunk * chunkSizeB + i)) count++; // считаем
             }
-            write(buf, chunk * chunkSizeB, count & 1);        // пишем
+            write(buf, chunk * chunkSizeB, count & 1);          // пишем
         }
 
         // 4. Перемешиваем
@@ -77,19 +77,19 @@ public:
             }
         }
         return 1;
-	}
+    }
     // распаковать данные
     // возврат: 0 ОК, 1 исправлены ошибки, 2 и 3 - есть неисправленные ошибки
     uint32_t unpack(uint8_t* data, uint32_t size) {
         // 0. Считаем и создаём буфер
-        uint8_t signif = chunkSizeB - (HAM_SIZE + 1);	// битов даты на чанк
-        if (size & chunkSize != 0) return 0;			// не кратно размеру чанка
-        chunkAmount = (uint32_t)size / chunkSize;		// колво чанков
-        bytes = chunkAmount * signif / 8;				// размер буфера, байт (округл. вниз)
-        if (buffer) free(buffer);						// чисти старый
-        buffer = (uint8_t*)malloc(bytes);				// выделяем
-        if (!buffer) return 0;							// не удалось создать
-        memset(buffer, 0, bytes);						// чисти чисти
+        uint8_t signif = chunkSizeB - (HAM_SIZE + 1);   // битов даты на чанк
+        if ((size & chunkSize) != 0) return 0;          // не кратно размеру чанка
+        chunkAmount = (uint32_t)size / chunkSize;       // колво чанков
+        bytes = chunkAmount * signif / 8;               // размер буфера, байт (округл. вниз)
+        if (buffer) free(buffer);                       // чисти старый
+        buffer = (uint8_t*)malloc(bytes);               // выделяем
+        if (!buffer) return 0;                          // не удалось создать
+        memset(buffer, 0, bytes);                       // чисти чисти
         uint8_t buf[size];
         int ptrCount = 0;
         stat = 0;
