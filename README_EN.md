@@ -38,6 +38,7 @@ Hamming<5> buf; // <> - code order (4-7)
 ## Usage
 ```cpp
 boolpack(T&data); // pack data of any type into a buffer
+bool pack(uint8_t *ptr, uint32_t size) // pack data from the pointer and size into a buffer
 uint32_t unpack(uint8_t* data, uint32_t size); // unpack data. return: 0 OK, 1 fixed bugs, 2 and 3 - have uncorrected bugs
 uint8_t status(); // return: 0 OK, 1 fixed errors, 2 and 3 - there are uncorrected errors
 uint32_t length(); // buffer size (greater than input data size)
