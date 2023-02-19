@@ -16,27 +16,40 @@
     v1.1 - исправлена критическая ошибка
     v1.2 - добавлена bool pack(uint8_t *ptr, uint32_t size)
     v1.3 - исправлена критическая ошибка
+    v1.3.1 - мелкие улучшения
+*/
+
+/*
+    статусы операции (pack/unpack):
+    0 - ОК
+    1 - исправлены ошибки (unpack)
+    2 - есть неисправленные ошибки (unpack)
+    3 - parity error (unpack)
+    4 - битый пакет (unpack)
+    5 - ошибка аллокации буфера
 */
 
 #ifndef _Hamming_h
 #define _Hamming_h
+
 template <uint8_t HAM_SIZE = 5>        // порядок алгоритма (4-8)
 class Hamming {
 public:
-    // запаковать данные в буфер
+    // запаковать данные в буфер, возвращает статус операции
     template <typename T>
-    bool pack(T &data) {
+    uint8_t pack(T &data) {
         return pack((uint8_t*)&data, (uint32_t)sizeof(T));
     }
     
-    bool pack(uint8_t *ptr, uint32_t size) {
+    uint8_t pack(uint8_t *ptr, uint32_t size) {
         // 0. Считаем и создаём буфер
+        stat = 0;
         uint8_t signif = chunkSizeB - (HAM_SIZE + 1);       // битов даты на чанк
         chunkAmount = (size * 8ul + signif - 1) / signif;   // колво чанков (целоч. деление)
         bytes = chunkAmount * chunkSize;                    // размер буфера, байт
         if (buffer) free(buffer);                           // освобождаем старый
         buffer = (uint8_t*)malloc(bytes);                   // выделяем
-        if (!buffer) return 0;                              // не удалось создать
+        if (!buffer) return stat = 5;                       // не удалось создать
         uint8_t buf[bytes];                                 // ещё буфер
         memset(buf, 0, bytes);                              // чисти чисти
         memset(buffer, 0, bytes);                           // чисти чисти
@@ -77,12 +90,13 @@ public:
                 write(buffer, k++, read(buf, i + j * chunkSizeB));
             }
         }
-        return 1;
+        return stat;
     }
-    // распаковать данные
-    // возврат: 0 ОК, 1 исправлены ошибки, 2 и 3 - есть неисправленные ошибки, 4 - битый пакет, 5 - не удалось аллоцировать буфер
-    uint32_t unpack(uint8_t* data, uint32_t size) {
+    
+    // распаковать данные, возвращает статус операции
+    uint8_t unpack(uint8_t* data, uint32_t size) {
         // 0. Считаем и создаём буфер
+        stat = 0;
         if ((size & (chunkSize - 1)) != 0) return stat = 4;    // не кратно размеру чанка
         uint8_t signif = chunkSizeB - (HAM_SIZE + 1);   // битов даты на чанк
         chunkAmount = (uint32_t)size / chunkSize;       // колво чанков
@@ -93,7 +107,6 @@ public:
         memset(buffer, 0, bytes);                       // чисти чисти
         uint8_t buf[size];
         int ptrCount = 0;
-        stat = 0;
 
         // 1. Разбираем мешанину обратно
         uint32_t k = 0;
@@ -114,12 +127,12 @@ public:
             }
 
             // 3. Анализируем результат
-            if (sum != 0) {                           // 1+ err
-                if (read(buf, chunk * chunkSizeB) == (count & 1)) stat = max(stat, 2);  // 2 err
-                else toggle(buf, chunk * chunkSizeB + sum);         // fix err
+            if (sum != 0) {                                                             // есть ошибки
+                if (read(buf, chunk * chunkSizeB) == (count & 1)) stat = max(stat, 2);  // 2 и больше ошибок
+                else toggle(buf, chunk * chunkSizeB + sum);                             // данные восстановлены
                 stat = max(stat, 1);
             } else {
-                if (read(buf, chunk * chunkSizeB) != (count & 1)) stat = max(stat, 3);  // parity err
+                if (read(buf, chunk * chunkSizeB) != (count & 1)) stat = max(stat, 3);  // parity error
             }
 
             // 4. Собираем дату из ячеек Хэмминга
@@ -132,7 +145,7 @@ public:
         return stat;
     }
 
-    // возврат: возврат: 0 ОК, 1 исправлены ошибки, 2 и 3 - есть неисправленные ошибки, 4 - битый пакет, 5 - не удалось аллоцировать буфер
+    // возвращает статус последней операции
     uint8_t status() {
         return stat;
     }
