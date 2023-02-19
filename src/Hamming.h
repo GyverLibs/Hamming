@@ -15,6 +15,7 @@
     v1.0 - релиз
     v1.1 - исправлена критическая ошибка
     v1.2 - добавлена bool pack(uint8_t *ptr, uint32_t size)
+    v1.3 - исправлена критическая ошибка
 */
 
 #ifndef _Hamming_h
@@ -79,16 +80,16 @@ public:
         return 1;
     }
     // распаковать данные
-    // возврат: 0 ОК, 1 исправлены ошибки, 2 и 3 - есть неисправленные ошибки
+    // возврат: 0 ОК, 1 исправлены ошибки, 2 и 3 - есть неисправленные ошибки, 4 - битый пакет, 5 - не удалось аллоцировать буфер
     uint32_t unpack(uint8_t* data, uint32_t size) {
         // 0. Считаем и создаём буфер
+        if ((size & (chunkSize - 1)) != 0) return stat = 4;    // не кратно размеру чанка
         uint8_t signif = chunkSizeB - (HAM_SIZE + 1);   // битов даты на чанк
-        if ((size & chunkSize) != 0) return 0;          // не кратно размеру чанка
         chunkAmount = (uint32_t)size / chunkSize;       // колво чанков
         bytes = chunkAmount * signif / 8;               // размер буфера, байт (округл. вниз)
         if (buffer) free(buffer);                       // чисти старый
         buffer = (uint8_t*)malloc(bytes);               // выделяем
-        if (!buffer) return 0;                          // не удалось создать
+        if (!buffer) return stat = 5;                   // не удалось создать
         memset(buffer, 0, bytes);                       // чисти чисти
         uint8_t buf[size];
         int ptrCount = 0;
@@ -131,7 +132,7 @@ public:
         return stat;
     }
 
-    // возврат: 0 ОК, 1 исправлены ошибки, 2 и 3 - есть неисправленные ошибки
+    // возврат: возврат: 0 ОК, 1 исправлены ошибки, 2 и 3 - есть неисправленные ошибки, 4 - битый пакет, 5 - не удалось аллоцировать буфер
     uint8_t status() {
         return stat;
     }
