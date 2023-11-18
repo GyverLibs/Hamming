@@ -32,7 +32,7 @@
 #ifndef _Hamming_h
 #define _Hamming_h
 
-template <uint8_t HAM_SIZE = 5>        // порядок алгоритма (4-8)
+template <uint8_t HAM_SIZE = 5>        // порядок алгоритма (4-7)
 class Hamming {
 public:
     // запаковать данные в буфер, возвращает статус операции
