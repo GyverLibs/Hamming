@@ -6,7 +6,7 @@ void setup() {
   char data0[] = "Hello, world! Lorem Ipsum";
 
   // запаковали
-  Hamming<5> buf;   // <> - порядок кода (4-8)
+  Hamming<5> buf;   // <> - порядок кода (4-7)
   // пакуем во внутренний буфер buf.buffer
   buf.pack(data0);  // 12мс
   
