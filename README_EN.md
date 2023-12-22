@@ -1,101 +1,133 @@
 This is an automatic translation, may be incorrect in some places. See sources and examples!
 
 # Hamming
-Library for packing and unpacking data using the Hamming algorithm (redundant data for recovery)
-- The order of the algorithm is 4-7 (the higher, the more reliable, but longer processing)
-- Recovery of data damaged in transit
-- Accepts any type of data
+Library for packaging and unpacking data on the Hamming algorithm (excess data for recovery)
+- the order of the algorithm 4-7 (the higher, the more reliable, but longer processing)
+- restoration of data damaged during shipping
+- accepts any type of data
 
-### Compatibility
-Compatible with all Arduino platforms (using Arduino functions)
+## compatibility
+Compatible with all arduino platforms (used arduino functions)
 
 ## Content
-- [Install](#install)
-- [Initialization](#init)
-- [Usage](#usage)
-- [Example](#example)
-- [Versions](#versions)
-- [Bugs and feedback](#feedback)
+- [installation] (# Install)
+- [initialization] (#init)
+- [use] (#usage)
+- [Example] (# Example)
+- [versions] (#varsions)
+- [bugs and feedback] (#fedback)
 
-<a id="install"></a>
+<a id="install"> </a>
 ## Installation
-- The library can be found by the name **Hamming** and installed through the library manager in:
-    - Arduino IDE
-    - Arduino IDE v2
-    - PlatformIO
-- [Download Library](https://github.com/GyverLibs/Hamming/archive/refs/heads/main.zip) .zip archive for manual installation:
-    - Unzip and put in *C:\Program Files (x86)\Arduino\libraries* (Windows x64)
-    - Unzip and put in *C:\Program Files\Arduino\libraries* (Windows x32)
-    - Unpack and put in *Documents/Arduino/libraries/*
-    - (Arduino IDE) automatic installation from .zip: *Sketch/Include library/Add .ZIP library…* and specify the downloaded archive
-- Read more detailed instructions for installing libraries [here] (https://alexgyver.ru/arduino-first/#%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE% D0%B2%D0%BA%D0%B0_%D0%B1%D0%B8%D0%B1%D0%BB%D0%B8%D0%BE%D1%82%D0%B5%D0%BA)<a id="init"></a>
-## Initialization
-```cpp
-Hamming<5> buf; // <> - code order (4-7)
-```
+- The library can be found by the name ** Hamming ** and installed through the library manager in:
+    - Arduino ide
+    - Arduino ide v2
+    - Platformio
+- [download the library] (https://github.com/gyverlibs/hamming/archive/refs/heads/main.zip). Zip archive for manual installation:
+    - unpack and put in * C: \ Program Files (X86) \ Arduino \ Libraries * (Windows X64)
+    - unpack and put in * C: \ Program Files \ Arduino \ Libraries * (Windows X32)
+    - unpack and put in *documents/arduino/libraries/ *
+    - (Arduino id) Automatic installation from. Zip: * sketch/connect the library/add .Zip library ... * and specify downloaded archive
+- Read more detailed instructions for installing libraries [here] (https://alexgyver.ru/arduino-first/#%D0%A3%D1%81%D1%82%D0%B0%BD%D0%BE%BE%BE%BED0%B2%D0%BA%D0%B0_%D0%B1%D0%B8%D0%B1%D0%BB%D0%B8%D0%BE%D1%82%D0%B5%D0%BA)
+### Update
+- I recommend always updating the library: errors and bugs are corrected in the new versions, as well as optimization and new features are added
+- through the IDE library manager: find the library how to install and click "update"
+- Manually: ** remove the folder with the old version **, and then put a new one in its place.“Replacement” cannot be done: sometimes in new versions, files that remain when replacing are deleted and can lead to errors!
 
-<a id="usage"></a>
+
+<a id="init"> </a>
+## initialization
+`` `CPP
+Hamming <5> buf;// <> - code order (4-7)
+`` `
+
+<a id="usage"> </a>
 ## Usage
-```cpp
-bool pack(T&data); // pack data of any type into a buffer
-bool pack(uint8_t *ptr, uint32_t size) // pack data from the pointer and size into a buffer
-uint32_t unpack(uint8_t* data, uint32_t size); // unpack data. return: 0 OK, 1 fixed bugs, 2 and 3 - have uncorrected bugs
-uint8_t status(); // return: 0 OK, 1 fixed errors, 2 and 3 - there are uncorrected errors
-uint32_t length(); // buffer size (greater than input data size)
-void stop(); // free buffer
-uint8_t *buffer; // internal buffer
-```
+`` `CPP
+// Pull data of any type to the buffer, returns the status of the operation
+Uint8_t Pack (T & Data);
+uint8_t pack (uint8_t *ptr, uint32_t size);
 
-<a id="example"></a>
+// unpack data from the buffer, returns the status of the operation
+uint8_t unpack (uint8_t* data, uint32_t size);
+
+uint8_t status ();// returns the status of the last operation
+uint32_t Length ();// buffer size (more than the size of the input data)
+VOID Stop ();// Free the buffer
+uint8_t *buffer;// Inner buffer
+
+// Operation Statuses (Pack/Unpack):
+// 0 - ok
+// 1 - Fixed errors (unpack)
+// 2 - there are incorrect errors (unpack)
+// 3 - Parity Error (Unpack)
+// 4 - broken package (unpack)
+// 5 - Boofer allocation error
+`` `
+
+<a id="EXAMPLE"> </a>
 ## Example
-See **examples** for other examples!
-```cpp
+The rest of the examples look at ** Examples **!
+`` `CPP
 #include <Hamming.h>
-void setup() {
-  Serial.begin(9600);
+VOID setup () {
+  Serial.Begin (9600);
 
-  // created a date (any type)
-  char data0[] = "Hello, world! Lorem Ipsum";
+  // Created a date (any type)
+  Char Data0 [] = "Hello, World! Lorem IPSUM";
 
   // packed
-  Hamming<5> buf; // <> - code order (4-7)
-  // pack into internal buffer buf.buffer
-  buf.pack(data0); // 12ms
+  Hamming <5> buf;// <> - code order (4-7)
+  // Pack in the internal buffer buf.buffer
+  buf.pack (DATA0);// 12MS
   
-  // packed data is stored in buf.buffer with size buf.length()
-  // you can "send" them
+  // packed data are stored in BUF.Buffer with the size of buf.length ()
+  // you can "send them"
   
-  // ======== "TRANSFER" ========
+  // ======== "Transfer" ============
 
-  // fucked up part (two bytes!)
-  buf.buffer[5] = 0;
-  buf.buffer[6] = 0;
+  // about@Bali part (twoCranberries byt!)
+  buf.buffer [5] = 0;
+  buf.buffer [6] = 0;
   
-  // ======== "RECEPTION" ========
+  // ======== "Reception" ===========
 
-  // unpack. The order in <> is the same!
-  Hamming<5> buf2;
+  // unpacking.The order in <> is the same!
+  Hamming <5> buf2;
   
-  // we pass the "received" packed data and their length (it must also be passed or known)
-  buf2.unpack(buf.buffer, buf.length()); // 6ms
+  // We transmit "accepted" packed data and their length (it also needs to be transferred or know)
+  buf2.unpack (buf.buffer, buf.length ());// 6MS
   
-  // output as a string
-  Serial.println((char*)buf2.buffer);
+  // Display as a line
+  Serial.println ((char*) buf2.buffer);
   
-  // display unpacking status
-  Serial.println(buf2.status());
+  // Display the Status of unpacking
+  Serial.println (buf2.status ());
 }
 
-void loop() {
+VOID loop () {
 }
-```
+`` `
 
-<a id="versions"></a>
-## Versions
-- v1.0
-- v1.1 - fixed critical bug
+<a id="versions"> </a>
+## versions
+- V1.0
+- V1.1 - Critical error is fixed
+- V1.2 - Added Bool Pack (Uint8_t *PTR, Uint32_T SIZE)
+- V1.3 - Critical error is fixed
+- v1.3.1 - minor improvements
 
-<a id="feedback"></a>
-## Bugs and feedback
-When you find bugs, create an **Issue**, or better, immediately write to the mail [alex@alexgyver.ru](mailto:alex@alexgyver.ru)
-The library is open for revision and your **Pull Request**'s!
+<a id="feedback"> </a>
+## bugs and feedback
+Create ** Issue ** when you find the bugs, and better immediately write to the mail [alex@alexgyver.ru] (mailto: alex@alexgyver.ru)
+The library is open for refinement and your ** pull Request ** 'ow!
+
+
+When reporting about bugs or incorrect work of the library, it is necessary to indicate:
+- The version of the library
+- What is MK used
+- SDK version (for ESP)
+- version of Arduino ide
+- whether the built -in examples work correctly, in which the functions and designs are used, leading to a bug in your code
+- what code has been loaded, what work was expected from it and how it works in reality
+- Ideally, attach the minimum code in which the bug is observed.Not a canvas of a thousand lines, but a minimum code
