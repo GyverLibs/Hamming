@@ -56,31 +56,35 @@ public:
         int ptrCount = 0;
         
         for (int chunk = 0; chunk < chunkAmount; chunk++) { // каждый чанк
+            int chunkBegin = chunk * chunkSizeB;
             // 1. Заполняем дату, минуя ячейки Хэмминга (0,1,2,4,8...)
             for (uint8_t i = 0; i < chunkSizeB; i++) {
-                if ((i & (i - 1)) != 0) {                   // проверка на степень двойки
-                    write(buf, chunk * chunkSizeB + i, read(ptr, ptrCount++));  // переписываем побитно
+                if (i & (i - 1)) {                   // проверка на степень двойки
+                    write(buf, chunkBegin + i, read(ptr, ptrCount++));  // переписываем побитно
                 }
             }
 
             // 2. Считаем и пишем parity для зон Хэмминга
             uint8_t parityH = 0;
             for (uint8_t i = 0; i < chunkSizeB; i++) {
+              if (read(buf, chunkBegin + i)) {
                 for (uint8_t j = 0; j < HAM_SIZE; j++) {
                     // если это ячейка хэмминга и бит стоит, инвертируем текущий parity
-                    if ((i & (1 << j)) && read(buf, chunk * chunkSizeB + i)) parityH ^= (1 << j);
+                    uint8_t shifted = 1 << j;
+                    if (i & shifted) parityH ^= shifted;
                 }
+              }
             }
             for (uint8_t i = 0; i < HAM_SIZE; i++) {
-                write(buf, chunk * chunkSizeB + (1 << i), (parityH >> i) & 1); // переписываем parity ячеек хэмминга
+                write(buf, chunkBegin + (1 << i), (parityH >> i) & 1); // переписываем parity ячеек хэмминга
             }
 
             // 3. Считаем и пишем общий parity
             uint8_t count = 0;
             for (uint8_t i = 1; i < chunkSizeB; i++) {
-                if (read(buf, chunk * chunkSizeB + i)) count++; // считаем
+                if (read(buf, chunkBegin + i)) count++; // считаем
             }
-            write(buf, chunk * chunkSizeB, count & 1);          // пишем
+            write(buf, chunkBegin, count & 1);          // пишем
         }
 
         // 4. Перемешиваем
@@ -117,10 +121,11 @@ public:
         }
 
         for (int chunk = 0; chunk < chunkAmount; chunk++) {   // каждый чанк
+            int chunkBegin = chunk * chunkSizeB;
             // 2. Получаем хэш ошибки и общий parity
             uint8_t sum = 0, count = 0;
             for (uint8_t i = 0; i < chunkSizeB; i++) {
-                if (read(buf, chunk * chunkSizeB + i)) {
+                if (read(buf, chunkBegin + i)) {
                     sum ^= i;
                     if (i > 0) count++;
                 }
@@ -128,17 +133,17 @@ public:
 
             // 3. Анализируем результат
             if (sum != 0) {                                                             // есть ошибки
-                if (read(buf, chunk * chunkSizeB) == (count & 1)) stat = max(stat, 2);  // 2 и больше ошибок
-                else toggle(buf, chunk * chunkSizeB + sum);                             // данные восстановлены
+                if (read(buf, chunkBegin) == (count & 1)) stat = max(stat, 2);  // 2 и больше ошибок
+                else toggle(buf, chunkBegin + sum);                             // данные восстановлены
                 stat = max(stat, 1);
             } else {
-                if (read(buf, chunk * chunkSizeB) != (count & 1)) stat = max(stat, 3);  // parity error
+                if (read(buf, chunkBegin) != (count & 1)) stat = max(stat, 3);  // parity error
             }
 
             // 4. Собираем дату из ячеек Хэмминга
             for (uint8_t i = 0; i < chunkSizeB; i++) {
-                if ((i & (i - 1)) != 0) {   // проверка на степень двойки
-                    write(buffer, ptrCount++, read(buf, chunk * chunkSizeB + i)); // переписываем побитно
+                if (i & (i - 1)) {   // проверка на степень двойки
+                    write(buffer, ptrCount++, read(buf, chunkBegin + i)); // переписываем побитно
                 }
             }
         }
