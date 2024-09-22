@@ -56,67 +56,86 @@ public:
         int ptrCount = 0;
         
         for (int chunk = 0; chunk < chunkAmount; chunk++) { // каждый чанк
-            int chunkBegin = chunk * chunkSizeB;
-            // 1. Заполняем дату, минуя ячейки Хэмминга (0,1,2,4,8...)
-            for (uint8_t i = 0; i < chunkSizeB; i++) {
-                if (i & (i - 1)) {                   // проверка на степень двойки
-                    write(buf, chunkBegin + i, read(ptr, ptrCount++));  // переписываем побитно
-                }
-            }
-
-            // 2. Считаем и пишем parity для зон Хэмминга
+            uint8_t countSet = 0;
             uint8_t parityH = 0;
+            int chunkBegin = chunk * chunkSizeB;
             for (uint8_t i = 0; i < chunkSizeB; i++) {
-              if (read(buf, chunkBegin + i)) {
-                for (uint8_t j = 0; j < HAM_SIZE; j++) {
-                    // если это ячейка хэмминга и бит стоит, инвертируем текущий parity
-                    uint8_t shifted = 1 << j;
-                    if (i & shifted) parityH ^= shifted;
+                // 1. Заполняем дату, минуя ячейки Хэмминга (0,1,2,4,8...)
+                bool bit = false;
+                if (i & (i - 1)) {                   // проверка на степень двойки
+                    bit = read(ptr, ptrCount++);
+                    if (bit) {  //буффер обнулен, так что можно записывать только единицы
+                        countSet++;
+                        write(buf, chunkBegin + i, bit);  // записываем побитно                        
+                    }
                 }
-              }
-            }
-            for (uint8_t i = 0; i < HAM_SIZE; i++) {
-                write(buf, chunkBegin + (1 << i), (parityH >> i) & 1); // переписываем parity ячеек хэмминга
+
+                // 2. Считаем и пишем parity для зон Хэмминга
+                if (bit) {
+                    for (uint8_t j = 0; j < HAM_SIZE; j++) {
+                        // если это ячейка хэмминга и бит стоит, инвертируем текущий parity
+                        uint8_t shifted = 1 << j;
+                        if (i & shifted) parityH ^= shifted;
+                    }
+                }
             }
 
-            // 3. Считаем и пишем общий parity
-            uint8_t count = 0;
-            for (uint8_t i = 1; i < chunkSizeB; i++) {
-                if (read(buf, chunkBegin + i)) count++; // считаем
+            for (uint8_t i = 0; i < HAM_SIZE; i++) {
+                bool value = (parityH >> i) & 1;
+                if (value) {
+                    //Записываем биты Хемминга
+                    countSet++;
+                    write(buf, chunkBegin + (1 << i), value); // записываем parity ячеек хэмминга
+                }
             }
-            write(buf, chunkBegin, count & 1);          // пишем
+
+            // 3. Пишем общий parity для чанка
+            bool commonParity =  countSet & 1;
+            if (commonParity) {
+                write(buf, chunkBegin, commonParity); // пишем
+            }
         }
 
         // 4. Перемешиваем
         uint32_t k = 0;
+        bool value = false;
         for (uint8_t i = 0; i < chunkSizeB; i++) {
             for (uint8_t j = 0; j < chunkAmount; j++) {
-                write(buffer, k++, read(buf, i + j * chunkSizeB));
+                value = read(buf, i + j * chunkSizeB);
+                if (value) {
+                    write(buffer, k, value);
+                }
+                k++;
             }
         }
         return stat;
     }
     
-    // распаковать данные, возвращает статус операции
+     // распаковать данные, возвращает статус операции
     uint8_t unpack(uint8_t* data, uint32_t size) {
         // 0. Считаем и создаём буфер
         stat = 0;
         if ((size & (chunkSize - 1)) != 0) return stat = 4;    // не кратно размеру чанка
         uint8_t signif = chunkSizeB - (HAM_SIZE + 1);   // битов даты на чанк
         chunkAmount = (uint32_t)size / chunkSize;       // колво чанков
-        bytes = chunkAmount * signif / 8;               // размер буфера, байт (округл. вниз)
+        bytes = (chunkAmount * signif) / 8;               // размер буфера, байт (округл. вниз)
         if (buffer) free(buffer);                       // чисти старый
         buffer = (uint8_t*)malloc(bytes);               // выделяем
         if (!buffer) return stat = 5;                   // не удалось создать
         memset(buffer, 0, bytes);                       // чисти чисти
         uint8_t buf[size];
+        memset(buf, 0, size);                           // чисти чисти
         int ptrCount = 0;
-
+        
         // 1. Разбираем мешанину обратно
         uint32_t k = 0;
+        bool value;
         for (uint8_t i = 0; i < chunkSizeB; i++) {
             for (uint8_t j = 0; j < chunkAmount; j++) {
-                write(buf, i + j * chunkSizeB, read(data, k++));
+                value = read(data, k++);
+                if (value) {
+                    write(buf, i + j * chunkSizeB, value);
+                }
             }
         }
 
@@ -143,7 +162,11 @@ public:
             // 4. Собираем дату из ячеек Хэмминга
             for (uint8_t i = 0; i < chunkSizeB; i++) {
                 if (i & (i - 1)) {   // проверка на степень двойки
-                    write(buffer, ptrCount++, read(buf, chunkBegin + i)); // переписываем побитно
+                    value  = read(buf, chunkBegin + i);
+                    if (value) {
+                        write(buffer, ptrCount, value); // записываем побитно
+                    }
+                    ptrCount++;
                 }
             }
         }
@@ -174,19 +197,19 @@ public:
     uint8_t *buffer = NULL;
 
 private:
-    void set(uint8_t* buf, uint32_t num) {
+    inline void set(uint8_t* buf, uint32_t num) {
         bitSet(buf[num >> 3], num & 0b111);
     }
-    void clear(uint8_t* buf, uint32_t num) {
+    inline void clear(uint8_t* buf, uint32_t num) {
         bitClear(buf[num >> 3], num & 0b111);
     }
-    void write(uint8_t* buf, uint32_t num, bool state) {
+    inline void write(uint8_t* buf, uint32_t num, bool state) {
         state ? set(buf, num) : clear(buf, num);
     }
-    bool read(uint8_t* buf, uint32_t num) {
+    inline bool read(uint8_t* buf, uint32_t num) {
         return bitRead(buf[num >> 3], num & 0b111);
     }
-    void toggle(uint8_t* buf, uint32_t num) {
+    inline void toggle(uint8_t* buf, uint32_t num) {
         read(buf, num) ? clear(buf, num) : set(buf, num);
     }
     int stat;
