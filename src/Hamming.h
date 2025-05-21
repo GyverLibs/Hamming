@@ -1,193 +1,410 @@
-/*
-    Библиотека для упаковки и распаковки данных по алгоритму Хэмминга (избыточные данные для восстановления)
-    Документация: 
-    GitHub: https://github.com/GyverLibs/Hamming
-    Возможности:
-    - Порядок алгоритма 4-8 (чем выше, тем надёжнее)
-    - Восстановление данных, повреждённых при пересылке
-    - Принимает любой тип данных
-    
-    AlexGyver, alex@alexgyver.ru
-    https://alexgyver.ru/
-    MIT License
+#pragma once
 
-    Версии:
-    v1.0 - релиз
-    v1.1 - исправлена критическая ошибка
-    v1.2 - добавлена bool pack(uint8_t *ptr, uint32_t size)
-    v1.3 - исправлена критическая ошибка
-    v1.3.1 - мелкие улучшения
-*/
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+#ifdef __AVR__
+#include <avr/pgmspace.h>
+#endif
 
-/*
-    статусы операции (pack/unpack):
-    0 - ОК
-    1 - исправлены ошибки (unpack)
-    2 - есть неисправленные ошибки (unpack)
-    3 - parity error (unpack)
-    4 - битый пакет (unpack)
-    5 - ошибка аллокации буфера
-*/
+// =============== UTILS ===============
 
-#ifndef _Hamming_h
-#define _Hamming_h
+#define HM_BEGIN_MIX                    \
+    uint8_t* buf = new uint8_t[size](); \
+    if (!buf) return false;
 
-template <uint8_t HAM_SIZE = 5>        // порядок алгоритма (4-7)
-class Hamming {
-public:
-    // запаковать данные в буфер, возвращает статус операции
-    template <typename T>
-    uint8_t pack(T &data) {
-        return pack((uint8_t*)&data, (uint32_t)sizeof(T));
+#define HM_END_MIX           \
+    memcpy(pack, buf, size); \
+    delete[] buf;            \
+    return true;
+
+namespace hamm {
+
+static void mix8(uint8_t* buf, uint8_t* pack, size_t size) {
+    // for (size_t i = 0; i < size; i += 8) {
+    //     for (uint8_t bit = 0; bit < 8; bit++) {
+    //         for (uint8_t byte = 0; byte < 8; byte++) {
+    //             // if ((pack[byte + i] >> bit) & 1) buf[bit + i] |= (1 << byte);
+    //             buf[bit + i] >>= 1;
+    //             if (pack[byte + i] & 1) buf[bit + i] |= (1 << 7);
+    //             pack[byte + i] >>= 1;
+    //         }
+    //     }
+    // }
+
+    uint8_t n = 8;
+    for (size_t i = 0; i < size; i += 8) {
+        uint8_t top = i + 8 > size ? size - i : 8;
+        for (uint8_t bit = 0; bit < 8; bit++) {
+            for (uint8_t byte = 0; byte < top; byte++) {
+                *buf >>= 1;
+                if ((pack[byte + i] >> bit) & 1) *buf |= (1 << 7);
+                if (!--n) n = 8, ++buf;
+            }
+        }
     }
-    
-    uint8_t pack(uint8_t *ptr, uint32_t size) {
-        // 0. Считаем и создаём буфер
-        stat = 0;
-        uint8_t signif = chunkSizeB - (HAM_SIZE + 1);       // битов даты на чанк
-        chunkAmount = (size * 8ul + signif - 1) / signif;   // колво чанков (целоч. деление)
-        bytes = chunkAmount * chunkSize;                    // размер буфера, байт
-        if (buffer) free(buffer);                           // освобождаем старый
-        buffer = (uint8_t*)malloc(bytes);                   // выделяем
-        if (!buffer) return stat = 5;                       // не удалось создать
-        uint8_t buf[bytes];                                 // ещё буфер
-        memset(buf, 0, bytes);                              // чисти чисти
-        memset(buffer, 0, bytes);                           // чисти чисти
-        int ptrCount = 0;
-        
-        for (int chunk = 0; chunk < chunkAmount; chunk++) { // каждый чанк
-            // 1. Заполняем дату, минуя ячейки Хэмминга (0,1,2,4,8...)
-            for (uint8_t i = 0; i < chunkSizeB; i++) {
-                if ((i & (i - 1)) != 0) {                   // проверка на степень двойки
-                    write(buf, chunk * chunkSizeB + i, read(ptr, ptrCount++));  // переписываем побитно
+}
+static void unmix8(uint8_t* buf, uint8_t* pack, size_t size) {
+    // for (size_t i = 0; i < size; i += 8) {
+    //     for (uint8_t bit = 0; bit < 8; bit++) {
+    //         for (uint8_t byte = 0; byte < 8; byte++) {
+    //             // if ((pack[bit + i] >> byte) & 1) buf[byte + i] |= (1 << bit);
+    //             buf[byte + i] >>= 1;
+    //             if (pack[bit + i] & 1) buf[byte + i] |= (1 << 7);
+    //             pack[bit + i] >>= 1;
+    //         }
+    //     }
+    // }
+
+    uint8_t n = 8;
+    for (size_t i = 0; i < size; i += 8) {
+        uint8_t top = i + 8 > size ? size - i : 8;
+        for (uint8_t bit = 0; bit < 8; bit++) {
+            for (uint8_t byte = 0; byte < top; byte++) {
+                if (*pack & 1) buf[byte + i] |= (1 << bit);
+                *pack >>= 1;
+                if (!--n) n = 8, ++pack;
+            }
+        }
+    }
+}
+
+#ifdef __AVR__
+static const uint8_t table84[] PROGMEM = {0x0, 0xF, 0x33, 0x3C, 0x55, 0x5A, 0x66, 0x69, 0x96, 0x99, 0xA5, 0xAA, 0xC3, 0xCC, 0xF0, 0xFF};
+
+#else
+static const uint8_t table84[] = {0x0, 0xF, 0x33, 0x3C, 0x55, 0x5A, 0x66, 0x69, 0x96, 0x99, 0xA5, 0xAA, 0xC3, 0xCC, 0xF0, 0xFF};
+#endif
+
+}  // namespace hamm
+
+// =============== UTILS ===============
+
+template <uint8_t HAM_SIZE>  // порядок алгоритма (4-7)
+class HammingT {
+   public:
+    static constexpr size_t BLOCK_SIZE = ((1 << HAM_SIZE) >> 3);           // вес блока в байтах (2-16)
+    static constexpr size_t BLOCK_SIZE_B = (1 << HAM_SIZE);                // вес блока в битах (16-128)
+    static constexpr size_t BLOCK_DATA_B = BLOCK_SIZE_B - (HAM_SIZE + 1);  // битов данных на блок (11-120)
+
+    // размер запакованных данных по размеру исходных
+    static constexpr size_t encodedSize(size_t size) {
+        return ((size * 8 + BLOCK_DATA_B - 1) / BLOCK_DATA_B) * BLOCK_SIZE;
+    }
+
+    // размер распакованных данных по размеру запакованных. 0 - некорректный размер пакета
+    static constexpr size_t decodedSize(size_t size) {
+        return (size & (BLOCK_SIZE - 1)) ? 0 : ((size / BLOCK_SIZE) * BLOCK_DATA_B) >> 3;
+    }
+
+    // Запаковать данные во внешний буфер dest размера encodedSize() [должен быть инициализирован 0]
+    static void encode(void* dest, const void* src, size_t size) {
+        size_t maxB = ((size * 8 + BLOCK_DATA_B - 1) / BLOCK_DATA_B) * BLOCK_SIZE_B;
+        size_t bit = 0, maxBit = size * 8;
+
+        for (size_t b = 0; b < maxB; b += BLOCK_SIZE_B) {
+            uint8_t count = 0, parity = 0;
+
+            for (uint8_t i = 0; i < BLOCK_SIZE_B; i++) {
+                // 1. Заполняем дату, минуя ячейки Хэмминга (0,1,2,4,8...)
+                if ((i & (i - 1)) && (bit < maxBit) && _readB(src, bit++)) {
+                    ++count;
+                    _setB(dest, b + i);
+
+                    // 2. Считаем и пишем parity для зон Хэмминга. Если это ячейка хэмминга и бит стоит, инвертируем parity
+                    for (uint8_t j = 0; j < HAM_SIZE; j++) {
+                        uint8_t v = 1 << j;
+                        if (i & v) parity ^= v;
+                    }
                 }
             }
 
-            // 2. Считаем и пишем parity для зон Хэмминга
-            uint8_t parityH = 0;
-            for (uint8_t i = 0; i < chunkSizeB; i++) {
-                for (uint8_t j = 0; j < HAM_SIZE; j++) {
-                    // если это ячейка хэмминга и бит стоит, инвертируем текущий parity
-                    if ((i & (1 << j)) && read(buf, chunk * chunkSizeB + i)) parityH ^= (1 << j);
-                }
-            }
             for (uint8_t i = 0; i < HAM_SIZE; i++) {
-                write(buf, chunk * chunkSizeB + (1 << i), (parityH >> i) & 1); // переписываем parity ячеек хэмминга
+                if ((parity >> i) & 1) {
+                    ++count;                    // Записываем биты Хемминга
+                    _setB(dest, b + (1 << i));  // записываем parity ячеек хэмминга
+                }
             }
 
-            // 3. Считаем и пишем общий parity
-            uint8_t count = 0;
-            for (uint8_t i = 1; i < chunkSizeB; i++) {
-                if (read(buf, chunk * chunkSizeB + i)) count++; // считаем
-            }
-            write(buf, chunk * chunkSizeB, count & 1);          // пишем
+            // 3. Пишем общий parity для блока
+            if (count & 1) _setB(dest, b);
         }
-
-        // 4. Перемешиваем
-        uint32_t k = 0;
-        for (uint8_t i = 0; i < chunkSizeB; i++) {
-            for (uint8_t j = 0; j < chunkAmount; j++) {
-                write(buffer, k++, read(buf, i + j * chunkSizeB));
-            }
-        }
-        return stat;
     }
-    
-    // распаковать данные, возвращает статус операции
-    uint8_t unpack(uint8_t* data, uint32_t size) {
-        // 0. Считаем и создаём буфер
-        stat = 0;
-        if ((size & (chunkSize - 1)) != 0) return stat = 4;    // не кратно размеру чанка
-        uint8_t signif = chunkSizeB - (HAM_SIZE + 1);   // битов даты на чанк
-        chunkAmount = (uint32_t)size / chunkSize;       // колво чанков
-        bytes = chunkAmount * signif / 8;               // размер буфера, байт (округл. вниз)
-        if (buffer) free(buffer);                       // чисти старый
-        buffer = (uint8_t*)malloc(bytes);               // выделяем
-        if (!buffer) return stat = 5;                   // не удалось создать
-        memset(buffer, 0, bytes);                       // чисти чисти
-        uint8_t buf[size];
-        int ptrCount = 0;
 
-        // 1. Разбираем мешанину обратно
-        uint32_t k = 0;
-        for (uint8_t i = 0; i < chunkSizeB; i++) {
-            for (uint8_t j = 0; j < chunkAmount; j++) {
-                write(buf, i + j * chunkSizeB, read(data, k++));
-            }
-        }
+    // Распаковать данные в себя. Вернёт true, если распакованы без ошибок или ошибки исправлены
+    static bool decode(void* src, size_t size) {
+        if (size & (BLOCK_SIZE - 1)) return false;  // не кратно размеру блока
 
-        for (int chunk = 0; chunk < chunkAmount; chunk++) {   // каждый чанк
+        size_t bit = 0;
+        size_t maxB = (size / BLOCK_SIZE) * BLOCK_SIZE_B;
+
+        for (size_t b = 0; b < maxB; b += BLOCK_SIZE_B) {
             // 2. Получаем хэш ошибки и общий parity
             uint8_t sum = 0, count = 0;
-            for (uint8_t i = 0; i < chunkSizeB; i++) {
-                if (read(buf, chunk * chunkSizeB + i)) {
+            for (uint8_t i = 0; i < BLOCK_SIZE_B; i++) {
+                if (_readB(src, b + i)) {
                     sum ^= i;
-                    if (i > 0) count++;
+                    if (i) ++count;
                 }
             }
 
             // 3. Анализируем результат
-            if (sum != 0) {                                                             // есть ошибки
-                if (read(buf, chunk * chunkSizeB) == (count & 1)) stat = max(stat, 2);  // 2 и больше ошибок
-                else toggle(buf, chunk * chunkSizeB + sum);                             // данные восстановлены
-                stat = max(stat, 1);
-            } else {
-                if (read(buf, chunk * chunkSizeB) != (count & 1)) stat = max(stat, 3);  // parity error
+            if (sum) {                                            // есть ошибки
+                if (_readB(src, b) == (count & 1)) return false;  // 2 и больше ошибок
+                else _toggleB(src, b + sum);                      // данные восстановлены
             }
 
             // 4. Собираем дату из ячеек Хэмминга
-            for (uint8_t i = 0; i < chunkSizeB; i++) {
-                if ((i & (i - 1)) != 0) {   // проверка на степень двойки
-                    write(buffer, ptrCount++, read(buf, chunk * chunkSizeB + i)); // переписываем побитно
+            for (uint8_t i = 0; i < BLOCK_SIZE_B; i++) {
+                if (i & (i - 1)) {  // не степень двойки
+                    _readB(src, b + i) ? _setB(src, bit) : _clrB(src, bit);
+                    ++bit;
                 }
             }
         }
-        return stat;
+        return true;
     }
 
-    // возвращает статус последней операции
-    uint8_t status() {
-        return stat;
+    // замешать запакованные данные. false если ошибка аллокации
+    static bool mix(void* pack, size_t size) {
+        HM_BEGIN_MIX;
+        _mix(buf, (uint8_t*)pack, size);
+        HM_END_MIX;
     }
-    
-    // размер буфера (больше чем размер входных данных)
-    uint32_t length() {
-        return bytes;
-    }
-    
-    // деструктор
-    ~Hamming() {
-        stop();
-    }
-    
-    // освободить буфер
-    void stop() {
-        if (buffer) free(buffer);
-    }
-    
-    // внутренний буфер
-    uint8_t *buffer = NULL;
 
-private:
-    void set(uint8_t* buf, uint32_t num) {
-        bitSet(buf[num >> 3], num & 0b111);
+    // размешать запакованные данные. false если ошибка аллокации
+    static bool unmix(void* pack, size_t size) {
+        HM_BEGIN_MIX;
+        _unmix(buf, (uint8_t*)pack, size);
+        HM_END_MIX;
     }
-    void clear(uint8_t* buf, uint32_t num) {
-        bitClear(buf[num >> 3], num & 0b111);
+
+    // замешать запакованные данные. false если ошибка аллокации
+    static bool mix8(void* pack, size_t size) {
+        HM_BEGIN_MIX;
+        hamm::mix8(buf, (uint8_t*)pack, size);
+        HM_END_MIX;
     }
-    void write(uint8_t* buf, uint32_t num, bool state) {
-        state ? set(buf, num) : clear(buf, num);
+
+    // размешать запакованные данные. false если ошибка аллокации
+    static bool unmix8(void* pack, size_t size) {
+        HM_BEGIN_MIX;
+        hamm::unmix8(buf, (uint8_t*)pack, size);
+        HM_END_MIX;
     }
-    bool read(uint8_t* buf, uint32_t num) {
-        return bitRead(buf[num >> 3], num & 0b111);
+
+   private:
+    static void _mix(void* buf, void* pack, size_t size) {
+        size_t k = 0;
+        size_t top = (size / BLOCK_SIZE) * BLOCK_SIZE_B;
+        for (uint8_t i = 0; i < BLOCK_SIZE_B; i++) {
+            for (size_t jb = 0; jb < top; jb += BLOCK_SIZE_B) {
+                if (_readB(pack, jb + i)) _setB(buf, k);
+                ++k;
+            }
+        }
     }
-    void toggle(uint8_t* buf, uint32_t num) {
-        read(buf, num) ? clear(buf, num) : set(buf, num);
+    static void _unmix(void* buf, void* pack, size_t size) {
+        size_t k = 0;
+        size_t top = (size / BLOCK_SIZE) * BLOCK_SIZE_B;
+        for (uint8_t i = 0; i < BLOCK_SIZE_B; i++) {
+            for (size_t jb = 0; jb < top; jb += BLOCK_SIZE_B) {
+                if (_readB(pack, k)) _setB(buf, jb + i);
+                ++k;
+            }
+        }
     }
-    int stat;
-    uint32_t bytes = 0;
-    uint32_t chunkAmount = 0;
-    const uint8_t chunkSizeB = (1 << HAM_SIZE);        // вес чанка в битах
-    const uint8_t chunkSize = (1 << HAM_SIZE) >> 3;    // вес чанка в байтах
+
+    static inline void _setB(void* buf, size_t b) __attribute__((always_inline)) {
+        ((uint8_t*)buf)[b >> 3] |= 1 << (b & 0b111);
+    }
+    static inline void _clrB(void* buf, size_t b) __attribute__((always_inline)) {
+        ((uint8_t*)buf)[b >> 3] &= ~(1 << (b & 0b111));
+    }
+    static inline bool _readB(const void* buf, size_t b) __attribute__((always_inline)) {
+        return (((const uint8_t*)buf)[b >> 3] >> (b & 0b111)) & 1;
+    }
+    static inline void _toggleB(void* buf, size_t b) __attribute__((always_inline)) {
+        _readB(buf, b) ? _clrB(buf, b) : _setB(buf, b);
+    }
 };
+
+class Hamming4 : public HammingT<4> {};
+class Hamming5 : public HammingT<5> {};
+class Hamming6 : public HammingT<6> {};
+class Hamming7 : public HammingT<7> {};
+
+/////////////
+
+class Hamming3 {
+   public:
+    static constexpr size_t BLOCK_SIZE = 1;    // вес блока в байтах
+    static constexpr size_t BLOCK_SIZE_B = 8;  // вес блока в битах
+    static constexpr size_t BLOCK_DATA_B = 4;  // битов данных на блок
+
+    // размер запакованных данных по размеру исходных
+    static constexpr size_t encodedSize(size_t size) {
+        return size * 2;
+    }
+
+    // размер распакованных данных по размеру запакованных. 0 - некорректный размер пакета
+    static constexpr size_t decodedSize(size_t size) {
+        return (size & 1) ? 0 : (size >> 1);
+    }
+
+    // Запаковать данные во внешний буфер dest размера encodedSize() [должен быть инициализирован 0]
+    static void encode(void* dest, const void* src, size_t size) {
+        encode((uint8_t*)dest, (const uint8_t*)src, size);
+    }
+    static void encode(uint8_t* dest, const uint8_t* src, size_t size) {
+        while (size--) {
+            *dest++ = encode(*src & 0xf);
+            *dest++ = encode(*src >> 4);
+            ++src;
+        }
+    }
+
+    // Распаковать данные в себя. Вернёт true, если распакованы без ошибок или ошибки исправлены
+    static bool decode(void* src, size_t size) {
+        return decode((uint8_t*)src, size);
+    }
+    static bool decode(uint8_t* src, size_t size) {
+        if (size & 1) return false;
+
+        uint8_t* dest = src;
+        while (size) {
+            int16_t bl = decode(*src++);
+            int16_t bh = decode(*src++);
+            if (bl < 0 || bh < 0) return false;
+            *dest++ = (bh << 4) | bl;
+            size -= 2;
+        }
+        return true;
+    }
+
+    // замешать запакованные данные. false если ошибка аллокации
+    static bool mix(void* pack, size_t size) {
+        if (size & 1) return false;
+
+        HM_BEGIN_MIX;
+        _mix(buf, (uint8_t*)pack, size);
+        HM_END_MIX;
+    }
+
+    // размешать запакованные данные. false если ошибка аллокации
+    static bool unmix(void* pack, size_t size) {
+        if (size & 1) return false;
+
+        HM_BEGIN_MIX;
+        _unmix(buf, (uint8_t*)pack, size);
+        HM_END_MIX;
+    }
+
+    // замешать запакованные данные. false если ошибка аллокации
+    static bool mix8(void* pack, size_t size) {
+        if (size & 1) return false;
+
+        HM_BEGIN_MIX;
+        hamm::mix8(buf, (uint8_t*)pack, size);
+        HM_END_MIX;
+    }
+
+    // размешать запакованные данные. false если ошибка аллокации
+    static bool unmix8(void* pack, size_t size) {
+        if (size & 1) return false;
+
+        HM_BEGIN_MIX;
+        hamm::unmix8(buf, (uint8_t*)pack, size);
+        HM_END_MIX;
+    }
+
+    // запаковать 4 бита
+    static uint8_t encode(uint8_t nibble) {
+#ifdef __AVR__
+        return pgm_read_byte(&hamm::table84[nibble]);
+#else
+        return hamm::table84[nibble];
 #endif
+    }
+
+    // распаковать 8 бит в 4 бита
+    static int16_t decode(uint8_t data) {
+        switch (data) {
+            case 0x00:
+            case 0x01:
+            case 0x0E:
+            case 0x0F:
+            case 0x32:
+            case 0x33:
+            case 0x3C:
+            case 0x3D:
+            case 0x54:
+            case 0x55:
+            case 0x5A:
+            case 0x5B:
+            case 0x66:
+            case 0x67:
+            case 0x68:
+            case 0x69:
+            case 0x96:
+            case 0x97:
+            case 0x98:
+            case 0x99:
+            case 0xA4:
+            case 0xA5:
+            case 0xAA:
+            case 0xAB:
+            case 0xC2:
+            case 0xC3:
+            case 0xCC:
+            case 0xCD:
+            case 0xF0:
+            case 0xF1:
+            case 0xFE:
+            case 0xFF:
+                break;
+
+            default:
+                uint8_t sum = 0, count = 0;
+                for (uint8_t i = 0; i < 8; i++) {
+                    if ((data >> i) & 1) {
+                        sum ^= i;
+                        if (i) ++count;
+                    }
+                }
+                if (sum) {
+                    if ((data & 1) == (count & 1)) return -1;
+                    else data ^= (1 << sum);
+                }
+        }
+        return ((data >> 4) & 0b1110) | ((data >> 3) & 1);
+    }
+
+   private:
+    static void _mix(void* buf, void* pack, size_t size) {
+        size_t k = 0, top = size * 8;
+        for (uint8_t i = 0; i < 8; i++) {
+            for (size_t jb = 0; jb < top; jb += 8) {
+                if (_readB(pack, jb + i)) _setB(buf, k);
+                ++k;
+            }
+        }
+    }
+    static void _unmix(void* buf, void* pack, size_t size) {
+        size_t k = 0, top = size * 8;
+        for (uint8_t i = 0; i < 8; i++) {
+            for (size_t jb = 0; jb < top; jb += 8) {
+                if (_readB(pack, k)) _setB(buf, jb + i);
+                ++k;
+            }
+        }
+    }
+
+    static inline void _setB(void* buf, size_t b) __attribute__((always_inline)) {
+        ((uint8_t*)buf)[b >> 3] |= 1 << (b & 0b111);
+    }
+
+    static inline bool _readB(const void* buf, size_t b) __attribute__((always_inline)) {
+        return (((const uint8_t*)buf)[b >> 3] >> (b & 0b111)) & 1;
+    }
+};

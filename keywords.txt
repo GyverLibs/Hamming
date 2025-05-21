@@ -11,13 +11,6 @@ Hamming	KEYWORD1
 # Methods and Functions (KEYWORD2)
 #######################################
 
-pack	KEYWORD2
-unpack	KEYWORD2
-status	KEYWORD2
-length	KEYWORD2
-stop	KEYWORD2
-buffer	KEYWORD2
-
 #######################################
 # Constants (LITERAL1)
 #######################################
