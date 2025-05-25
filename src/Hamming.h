@@ -377,7 +377,7 @@ class Hamming3 {
                     else data ^= (1 << sum);
                 }
         }
-        return ((data >> 4) & 0b1110) | ((data >> 3) & 1);
+        return (data >> 5) | ((data >> 3) & 1);
     }
 
    private:
