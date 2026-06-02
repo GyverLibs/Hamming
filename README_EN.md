@@ -1,207 +1,215 @@
-This is an automatic translation, may be incorrect in some places. See sources and examples!
+This is an automatic translation and may be incorrect in some places. See the source README and examples for authoritative information.
+
+[![latest](https://img.shields.io/github/v/release/GyverLibs/Hamming.svg?color=brightgreen)](https://github.com/GyverLibs/Hamming/releases/latest/download/Hamming.zip)
+[![PIO](https://badges.registry.platformio.org/packages/gyverlibs/library/Hamming.svg)](https://registry.platformio.org/libraries/gyverlibs/Hamming)
+[![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
+[![Foo](https://img.shields.io/badge/%E2%82%BD%24%E2%82%AC%20%D0%9F%D0%BE%D0%B4%D0%B4%D0%B5%D1%80%D0%B6%D0%B0%D1%82%D1%8C-%D0%B0%D0%B2%D1%82%D0%BE%D1%80%D0%B0-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
+[![Foo](https://img.shields.io/badge/README-ENGLISH-blueviolet.svg?style=flat-square)](https://github-com.translate.goog/GyverLibs/Hamming?_x_tr_sl=ru&_x_tr_tl=en)  
+
+[![Foo](https://img.shields.io/badge/ПОДПИСАТЬСЯ-НА%20ОБНОВЛЕНИЯ-brightgreen.svg?style=social&logo=telegram&color=blue)](https://t.me/GyverLibs)
 
 # Hamming
-Library for packaging and unpacking data on the Hamming algorithm (Extnded Hamming)
--the order of the algorithm (number of bits of Hamming) 3-7
-- restoration of data damaged during shipping: restoration 1 bit per block, or determining the impossibility of restoring
-- optionally mixing data for a more reliable transmission - can restore several spoiled bit/byte in a row
+Library for packing and unpacking data using the Hamming algorithm (Extended Hamming)
+- Algorithm order (Hamming bit count) 3-7
+- Recovery of data damaged during transfer: recovery of 1 bit per block, or determination of impossibility of recovery
+- Optionally mixing data for more reliable transmission - can recover several corrupted bits/bytes in a row
 
-> The library is updated to version V2, incompatible with the old one!The old version can be connected as `# Include <Hammingold.h>`
+> Updated to v2, incompatible with the old version! The old version can be connected as`#include <HammingOld.h>`
 
-## compatibility
-Compatible with all arduino platforms (used arduino functions)
+### Compatibility
+Compatible with all Arduino platforms (Arduino features are used)
 
-## Content
-- [documentation] (#doc)
-- [Example] (# Example)
-- [versions] (#varsions)
-- [installation] (# Install)
-- [bugs and feedback] (#fedback)
+## Contents
+- [Documentation.](#doc)
+- [Example](#example)
+- [Versions](#versions)
+- [Installation](#install)
+- [Bugs and feedback](#feedback)
 
-<a id = "doc"> </a>
+<a id="doc"></a>
 
-## Documentation
-### base
-The new version of the library contains several classes in terms of the number of excess package data:
+## Documentation.
+### Base
+The new version of the library contains several classes according to the amount of redundant packet data:
 
-|Class |Block size, byte |Block size, bit |Data in the block, bit |Package size 100 bytes, byte |
-|---------- |------------------ |----------------- |------------------- |--------------------------- |
-|`Hamming3` |1 |8 |4 |200 |
-|`Hamming4` |2 |16 |11 |146 |
-|`Hamming5` |4 |32 |26 |124 |
-|`Hamming6` |8 |64 |57 |120 |
-|`Hamming7` |16 |128 |120 |112 |
+| Class | Block size, byte | Block size, bit | Block data, bit | 100 byte packet size, byte |
+| ------------------------------------------- | ------------- | ----------------------------------------- | |
+|`Hamming3` | 1                  | 8                 | 4                   | 200                          |
+| `Hamming4` | 2                  | 16                | 11                  | 146                          |
+| `Hamming5` | 4                  | 32                | 26                  | 124                          |
+| `Hamming6` | 8                  | 64                | 57                  | 120                          |
+| `Hamming7` | 16                 | 128               | 120                 | 112                          |
 
-The higher the class, the:
+The higher the class, the more:
 
-- larger block size (minimum package size)
-- less the final size of the package, becauseabove the ratio of data bits to the size of the block
-- longer processing and below reliability
+- Larger block size (minimum package size)
+- Less total packet size, because higher ratio of data bits to block size
+- Longer processing and lower reliability
 
-### Benchmark
-The test was held on AVR Atmega328p 16MHz, time in the ISS.
+### benchmark
+The test was conducted on the AVR ATmega328p 16MHz, time in μs.
 
-### Hamming4
-|Package size |`encode` |`mix` |`mix8` |`decode` |
-|------------- |-------- |----- |------ |-------- |
-|25 |1673 |1557 |486 |2811 |
-|50 |3315 |3034 |1078 |5469 |
-|100 |7240 |5977 |2185 |10794 |
+#### Hamming4
+| Package size |`encode` | `mix` | `mix8` | `decode` |
+| ------------- | -------- | ----- | ------ | -------- |
+| 25            | 1673     | 1557  | 486    | 2811     |
+| 50            | 3315     | 3034  | 1078   | 5469     |
+| 100           | 7240     | 5977  | 2185   | 10794    |
 
-> Versions 4/5/6/7 are not very different in time
+> Versions 4/5/6/7 are not much different in time
 
-### Hamming3
-|Package size |`encode` |`mix` |`mix8` |`decode` |
-|------------- |-------- |----- |------ |-------- |
-|25 |94 |1933 |689 |230 |
-|50 |185 |3847 |1373 |472 |
-|100 |366 |7690 |2741 |944 |
+#### Hamming3
+| Package size |`encode` | `mix` | `mix8` | `decode` |
+| ------------- | -------- | ----- | ------ | -------- |
+| 25            | 94       | 1933  | 689    | 230      |
+| 50            | 185      | 3847  | 1373   | 472      |
+| 100           | 366      | 7690  | 2741   | 944      |
 
-> `Hamming3` implemented tablely and works many times faster than the rest
+> `Hamming3`Implemented tabularly and works many times faster than others
 
-### functions
-`` `CPP
-// size of packed data in terms of source
-Size_T ENCODEDSIZE (Size_T SIZE);
+### Functions
+```cpp
+// size of packed data by size of initial
+size_t encodedSize(size_t size);
 
-// The size of the unpacked data by the size of packed.0 - incorrect package size
-Size_t DecededSize (Size_t Size);
+// the size of the unpacked data by the size of the packaged. 0 - Incorrect package size
+size_t decodedSize(size_t size);
 
-// Knock the packed data.FALSE if an allocation error
-Bool Mix (VOID* Pack, Size_t Size);
+// Mix the packed data. false if allocation error
+bool mix(void* pack, size_t size);
 
-// Stir the packed data.FALSE if an allocation error
-Bool Unmix (VOID*Pack, Size_t Size);
+// Stir the packed data. false if allocation error
+bool unmix(void* pack, size_t size);
 
-// Knock the packed data.FALSE if an allocation error
-Bool MIX8 (VOID* PACK, SIZE_T SIZE);
+// Mix the packed data. false if allocation error
+bool mix8(void* pack, size_t size);
 
-// Stir the packed data.FALSE if an allocation error
-Bool Unmix8 (Void* Pack, Size_t Size);
+// Stir the packed data. false if allocation error
+bool unmix8(void* pack, size_t size);
 
-// Pull data in the external buffer of the size of the EncodeedSize () [should be initialized 0]
-VOID ENCODE (VOID* Dest, const VOID* SRC, SIZE_T SIZE);
+// Pack the data into an external dest buffer of encodedSize() [must be initialized 0]
+void encode(void* dest, const void* src, size_t size);
 
-// unpack the data into yourself.Will return True if it is unpacked without errors or errors corrected
-Bool decode (VOID* SRC, SIZE_T SIZE);
-`` `
+// Unpack the data into yourself. Return true if unpacked without errors or errors corrected
+bool decode(void* src, size_t size);
+```
 
-### Usage
-- took the data, received the size of the buffer (more than the data themselves), encoded the data in it
-- "handed over" the buffer to another device
-- We divorced the data obtained.If the data was damaged in the process of transmission, they themselves will be restored if possible
+### Use of use
+- Take the data, get the size of the buffer (more than the data itself), encode the data into it
+- Transmitted the buffer to another device
+- We decoded the data. If the data is damaged during the transfer, it will be restored as far as possible.
 
-> [! Caution]
-> Since after encoding the package has a size multiple of the size of the block in the selected manner, the real size of the package will be lost - when unpacking it is calculated mathematically.For example, `Hamming5`, data size 10 bytes.The size of the package will turn out 16 bytes (widened in a large way), and when unpacking will turn out 13 bytes.The real size of the package must be known on the receiver side or add to the package itself, the library does not.
+> [!CAUTION]
+> Since after encoding, the package has a size multiple of the block size in the selected order, the real size of the package will be lost - when unpacking it will be calculated mathematically. For example,`Hamming5`The data size is 10 bytes. The package size will be 16 bytes (rounded in a large direction), and when unpacking you will get 13 bytes. You need to know the actual size of the packet on the receiver side or add it to the packet itself, the library does not.
 
-## reliability
-The algorithm can restore one "spoiled" bit in the block.The smaller the size of the block, the greater the "noise" potentially can survive the package when transmitting.Blocks go one after another, so if you damage two neighboring bats within the same block, the data cannot be restored.
+### Reliability
+The algorithm can recover a single “spoiled” bit in a block. The smaller the block size, the more “noise” the packet can potentially survive transmission. The blocks follow each other, so if you damage two neighboring bits within the same block, you can not recover the data.
 
-In `Hamming3 'mode, the package has a double data size, i.e.This is how to send data twice.But if there are interference, the data will simply be spoiled, how many packages do not send.And with Hamming you can lose a decent part of the package (12.5% ​​in this case) and the data will be restored.
+In mode.`Hamming3`A packet takes up the size of double data, which is like sending data twice. But if there is interference, the data will simply be spoiled, how many packets do not send. And with Hamming, you can lose a decent part of the package (12.5% in this case), and the data can be restored.
 
-> When creating their communication protocols, it is recommended to add CRC and packet size, such as in the library [gyverwire] (https://github.com/gyverlibs/gyverwire)
+> When creating your communication protocols, it is recommended to add CRC and packet size to the package, such as in the library.[GyverWire](https://github.com/GyverLibs/GyverWire)
 
-### Mixing
-If you “mix” the package (place the blocks of the blocks in turn one after another), then after stirring you can restore several spoiled bit in a row, or even bytes, depends on the size of the package, becauseThe error will affect different blocks.The package is mixed after packaging (before sending) and stirred back (after receiving) before unpacking.Mixing and stirring the package - a long operation and selects memory the size of a buffer, is added manually at the discretion of the user.
+### Stirring
+If you "mix" the packet (arrange the bits of blocks one after another), then after stirring you can recover several spoiled bits in a row, or even bytes - depending on the size of the packet, because the error will affect different blocks. The package is stirred after packaging (before shipping) and stirred back (after receiving) before unpacking. Mixing and stirring the packet is a long operation and allocates buffer-sized memory, added manually at the discretion of the user.
 
-Two mixing algorithms are available - complete `mix`/` unmix` and 8 -back `mix8`/` unmix8`.The full is performed for a long time and completely stretches the blocks on the package.8-byte works 8 byte blocks, the remainder kneads by the balance.Full mixing allows you to restore several spoiled bytes in a row (with a large package size), and 8 -bit - only 1 bytes for every 8 bytes.With single spoiled bats, they work the same way.
+Two mixing algorithms are available - full`mix`/`unmix`8-byte`mix8`/`unmix8`. Complete is done for a long time and completely stretches the blocks in the package. 8-byte works in blocks of 8 bytes, the rest is kneaded by the remainder. Full mixing allows you to recover several spoiled bytes in a row (with a large packet size), and 8-bit only 1 byte for every 8 bytes. With single spoiled bits, they work the same way.
 
-<a id = "Example"> </a>
+<a id="example"></a>
 
 ## Example
-`` `CPP
-#include <hamming.h>
+```cpp
+#include <Hamming.h>
 
-VOID setup () {
-Serial.Begin (115200);
-Serial.println ("=== Start ===");
+void setup() {
+    Serial.begin(115200);
+    Serial.println("=== START ===");
 
-// Created a date (any type)
-Chard [] = "Hello, World! Hamming Encoding";
+    // Create a date (any type)
+    char str[] = "Hello, world! Hamming encoding";
 
-Serial.print ("Data Len:"), serial.println (SIZEOF (str));
+    Serial.print("data len: "), Serial.println(sizeof(str));
 
-// Size of packed data
-Size_t Elen = Hamming4 :: EncodeedSize (Sizeof (Str));
+    // size
+    size_t elen = Hamming4::encodedSize(sizeof(str));
 
-Serial.print ("Pack Len:"), serial.println (Elen);
+    Serial.print("pack len: "), Serial.println(elen);
 
-// buffer for package
-uint8_t p [elen] = {};
+    // bagboard
+    uint8_t p[elen] = {};
 
-// package
-Hamming4 :: Encode (p, str, sizeof (str));
+    // packaging
+    Hamming4::encode(p, str, sizeof(str));
 
-// knitting
-Hamming4 :: mix8 (p, elen);
-// hamming4 :: mix (p, elen);
+    // mixing
+    Hamming4::mix8(p, elen);
+    // Hamming4::mix(p, elen);
 
-// ======== Transmission ===============
-// imitation of data damage
+    // ===============
+    // imitation
 
-P [3] = 0;// Bayt
-// bitwrite (p [9], 3,! Bitread (p [9], 3));// bit
+    p[3] = 0;  // byte
+    // bitWrite(p[9], 3, !bitRead(p[9], 3) //bit
 
-// ======== Transmission ===============
+    // ===============
 
-// Stiring
-Hamming4 :: unmix8 (P, Elen);
-// hamming4 :: unmix (p, elen);
+    // stirring
+    Hamming4::unmix8(p, elen);
+    // Hamming4::unmix(p, elen);
 
-// Size of unpacked data
-Size_t Dlen = Hamming4 :: DecDedsize (Sizeof (P));
+    // volume
+    size_t dlen = Hamming4::decodedSize(sizeof(p));
 
-Serial.print ("Decode Len:"), serial.println (Dlen);
+    Serial.print("decode len: "), Serial.println(dlen);
 
-// unpacking (in the same buffer)
-Bool rES = Hamming4 :: Decode (p, sizeof (p));
+    // unpacking (in the same buffer)
+    bool res = Hamming4::decode(p, sizeof(p));
 
-if (res) serial.write ((char*) p, dlen), serial.println ();
-Else serial.println ("Data Error!");
+    if (res) Serial.write((char*)p, dlen), Serial.println();
+    else Serial.println("Data error!");
 
-Serial.println ("==== end ====");
+    Serial.println("==== END ====");
 }
-`` `
+```
 
-<a ID = "Versions"> </a>
+<a id="versions"></a>
 
-## versions
-- V1.0
-- V1.1 - Critical error is fixed
-- V1.2 - Added Bool Pack (Uint8_t *PTR, Uint32_T SIZE)
-- V1.3 - Critical error is fixed
+## Versions
+- v1.0
+- v1.1 - a critical error has been corrected
+- v1.2 - added bool pack(uint8 t *ptr, uint32 t size)
+- v1.3 - critical error corrected
 - v1.3.1 - minor improvements
-- v2.0.0 - strong optimization of speed and memory, new tools
+- v2.0.0 - Strong speed and memory optimization, new tools
 
-<a id = "Install"> </a>
+<a id="install"></a>
 
 ## Installation
-- The library can be found by the name ** Hamming ** and installed through the library manager in:
-- Arduino ide
-- Arduino ide v2
-- Platformio
-- [download the library] (https://github.com/gyverlibs/hamming/archive/refs/heads/main.zip). Zip archive for manual installation:
-- unpack and put in * C: \ Program Files (X86) \ Arduino \ Libraries * (Windows X64)
-- unpack and put in * C: \ Program Files \ Arduino \ Libraries * (Windows X32)
-- unpack and put in *documents/arduino/libraries/ *
-- (Arduino id) Automatic installation from. Zip: * sketch/connect the library/add .Zip library ... * and specify downloaded archive
-- Read more detailed instructions for installing libraries[here] (https://alexgyver.ru/arduino-first/#%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B1%D0%B8%D0%B1%D0%B8%D0%BE%D1%82%D0%B5%D0%BA)
+- The library can be found by the name **Hamming** and installed through the library manager in:
+    - Arduino IDE
+    - Arduino IDE v2
+    - PlatformIO
+- [Download the library](https://github.com/GyverLibs/Hamming/archive/refs/heads/main.zip).zip archive for manual installation:
+    - Unpack and put in *C:\Program Files (x86)\Arduino\libraries* (Windows x64)
+    - Unpack and put in *C:\Program Files\Arduino\libraries* (Windows x32)
+    - Unpack and put in *Documents/Arduino/libraries/ *
+    - (Arduino IDE) Automatic installation from .zip: *Sketch/Connect library/Add .ZIP library...* and specify downloaded archive
+- Read more detailed instructions for installing libraries[here](https://alexgyver.ru/arduino-first/#%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B1%D0%B8%D0%B1%D0%BB%D0%B8%D0%BE%D1%82%D0%B5%D0%BA)
 ### Update
-- I recommend always updating the library: errors and bugs are corrected in the new versions, as well as optimization and new features are added
-- through the IDE library manager: find the library how to install and click "update"
-- Manually: ** remove the folder with the old version **, and then put a new one in its place.“Replacement” cannot be done: sometimes in new versions, files that remain when replacing are deleted and can lead to errors!
+- I recommend always updating the library: new versions fix errors and bugs, as well as optimize and add new features.
+- Through the library manager IDE: find the library as when installing and click "Update"
+- Manually: **Delete the folder with the old version** and then put the new one in its place. “Replacement” can not be done: sometimes new versions delete files that will remain when replaced and can lead to errors!
 
-<a id = "Feedback"> </a>
+<a id="feedback"></a>
 
-## bugs and feedback
-Create ** Issue ** when you find the bugs, and better immediately write to the mail [alex@alexgyver.ru] (mailto: alex@alexgyver.ru)
-The library is open for refinement and your ** pull Request ** 'ow!
+## Bugs and feedback
+If you find bugs, create **Issue**, or better write to the mail immediately.[alex@alexgyver.ru](mailto:alex@alexgyver.ru)  
+The library is open for revision and your **Pull Requests*!
 
-When reporting about bugs or incorrect work of the library, it is necessary to indicate:
-- The version of the library
-- What is MK used
+When reporting bugs or incorrect work of the library, it is necessary to specify:
+- Library version
+- What is used by the IC
 - SDK version (for ESP)
-- version of Arduino ide
-- whether the built -in examples work correctly, in which the functions and designs are used, leading to a bug in your code
-- what code has been loaded, what work was expected from it and how it works in reality
-- Ideally, attach the minimum code in which the bug is observed.Not a canvas of a thousand lines, but a minimum code
+- Arduino IDE version
+- Are embedded examples that use features and designs that cause bugs in your code working correctly?
+- What code was downloaded, what work was expected from it and how it works in reality
+- Ideally, attach the minimum code in which the bug is observed. Not a canvas of a thousand lines, but a minimum code.
