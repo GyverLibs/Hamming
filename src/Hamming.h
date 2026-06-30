@@ -167,6 +167,8 @@ class HammingT {
 
     // замешать запакованные данные. false если ошибка аллокации
     static bool mix(void* pack, size_t size) {
+        if (size & (BLOCK_SIZE - 1)) return false;
+
         HM_BEGIN_MIX;
         _mix(buf, (uint8_t*)pack, size);
         HM_END_MIX;
@@ -174,6 +176,8 @@ class HammingT {
 
     // размешать запакованные данные. false если ошибка аллокации
     static bool unmix(void* pack, size_t size) {
+        if (size & (BLOCK_SIZE - 1)) return false;
+
         HM_BEGIN_MIX;
         _unmix(buf, (uint8_t*)pack, size);
         HM_END_MIX;
